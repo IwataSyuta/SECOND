@@ -1,0 +1,155 @@
+<!DOCTYPE html>　　　　　　　　　　　
+<html lang="jp">
+<head>
+<meta charset="UTF-8" />
+<title>Moving Platforms Game</title>
+<style>
+  canvas { background:#eef; display:block; margin:0 auto; border:2px solid #333; }
+</style>
+</head>
+<body>
+<canvas id="game" width="600" height="500"></canvas>
+
+<script>
+// =====================
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const player = { x: 260, y: 380, w: 30, h: 30, color: "#ff3333" };
+let vx = 0, vy = 0;
+let speed = 200, g = 900, isGrounded = false;
+let keys = {};
+
+const platforms = [
+  { x: 220, y: 420, w: 160, h: 15, vx: 0 },
+  { x: 50,  y: 300, w: 140, h: 15, vx: 120 },
+  { x: 360, y: 200, w: 160, h: 15, vx: -120 },
+  { x: 150, y: 120, w: 200, h: 15, vx: 130 }
+];
+
+const goal = { x: 250, y: 40, w: 100, h: 20 };
+
+const bounce = 0.4, impact = 280, friction = 0.9;
+
+// =====================
+function collideWithFloor(){
+  if (player.y > canvas.height + 100) restart();
+  isGrounded = false;
+}
+
+function collideWithPlatforms(dt){
+  for (const p of platforms){
+    if (player.x + player.w > p.x && player.x < p.x + p.w &&
+        player.y + player.h > p.y && player.y + player.h < p.y + 20 && vy >= 0){
+      player.y = p.y - player.h;
+      if (Math.abs(vy) > impact){
+        vy = -vy * bounce;
+        isGrounded = false;
+      } else {
+        vy = 0;
+        isGrounded = true;
+        player.x += p.vx * dt;
+      }
+    }
+  }
+}
+
+// =====================
+function update(dt){
+  if (keys["ArrowLeft"])  vx = -speed;
+  else if (keys["ArrowRight"]) vx = speed;
+  else if (isGrounded) vx *= friction;
+  else vx *= 0.98;
+
+  player.x += vx * dt;
+  vy += g * dt;
+  player.y += vy * dt;
+
+  isGrounded = false;
+  collideWithFloor();
+  collideWithPlatforms(dt);
+
+  for (const p of platforms){
+    p.x += p.vx * dt;
+    if (p.x < 0 || p.x + p.w > canvas.width) p.vx *= -1;
+  }
+
+  if (checkGoal()) endGame();
+}
+
+// =====================
+function checkGoal(){
+  return (
+    player.x + player.w > goal.x &&
+    player.x < goal.x + goal.w &&
+    player.y + player.h > goal.y &&
+    player.y < goal.y + goal.h
+  );
+}
+
+// =====================
+function restart(){
+  player.x = 260;
+  player.y = 380;
+  vy = 0;
+  vx = 0;
+}
+
+// =====================
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = "#ff0";
+  ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
+
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  ctx.fillStyle = "#444";
+  for (const p of platforms) ctx.fillRect(p.x, p.y, p.w, p.h);
+
+  if (!running) drawGoalMessage();
+}
+
+// =====================
+// GOAL表示部分
+// =====================
+function drawGoalMessage(){
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "64px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("GOAL!!", canvas.width / 2, canvas.height / 2);
+}
+
+function endGame(){
+  running = false;
+  drawGoalMessage();
+}
+
+// =====================
+let lastTime = 0, running = true;
+
+function loop(t){
+  if (!running){ drawGoalMessage(); return; }
+  const dt = (t - lastTime) / 1000;
+  lastTime = t;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// Key Events
+document.addEventListener("keydown", e=>{
+  keys[e.key] = true;
+  if (e.key === " ") if (isGrounded) vy = -450;
+});
+document.addEventListener("keyup", e=>{
+  keys[e.key] = false;
+});
+</script>
+</body>
+</html>
